@@ -227,7 +227,7 @@ objc_object::initIsa(Class cls, bool nonpointer, bool hasCxxDtor)
         // isa.magic is part of ISA_MAGIC_VALUE
         // isa.nonpointer is part of ISA_MAGIC_VALUE
         newisa.has_cxx_dtor = hasCxxDtor;
-        newisa.shiftcls = (uintptr_t)cls >> 3;
+        newisa.shiftcls = (uintptr_t)cls >> 3; //地址对齐 （0x000）
 #endif
 
         // This write must be performed in a single store in some cases

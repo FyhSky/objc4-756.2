@@ -638,18 +638,20 @@ struct magic_t {
 };
     
 
-class AutoreleasePoolPage 
+class AutoreleasePoolPage //双向链表
 {
     // EMPTY_POOL_PLACEHOLDER is stored in TLS when exactly one pool is 
     // pushed and it has never contained any objects. This saves memory 
     // when the top level (i.e. libdispatch) pushes and pops pools but 
     // never uses them.
-#   define EMPTY_POOL_PLACEHOLDER ((id*)1)
+#   define EMPTY_POOL_PLACEHOLDER ((id*)1)//占位符
 
-#   define POOL_BOUNDARY nil
+#   define POOL_BOUNDARY nil//池子的边界,标识了多个 Autorelease Pool 的分割边界
     static pthread_key_t const key = AUTORELEASE_POOL_KEY;
     static uint8_t const SCRIBBLE = 0xA3;  // 0xA3A3A3A3 after releasing
-    static size_t const SIZE = 
+    static size_t const SIZE = //一个池子的大小 PAGE_MAX_SIZE （一个 poolPage 的大小 是 4096 字节。其中56 bit 用来存储其成员变量，剩下的存储加入到自动释放池中的对象。
+    //调用 autorelease 的对象
+    //声明在@autoreleasepool{} 中的对象）
 #if PROTECT_AUTORELEASEPOOL
         PAGE_MAX_SIZE;  // must be multiple of vm page size
 #else
@@ -658,11 +660,11 @@ class AutoreleasePoolPage
     static size_t const COUNT = SIZE / sizeof(id);
 
     magic_t const magic;
-    id *next;
-    pthread_t const thread;
-    AutoreleasePoolPage * const parent;
-    AutoreleasePoolPage *child;
-    uint32_t const depth;
+    id *next;//指向最新添加进来的对象所处的位置的下一个位置
+    pthread_t const thread;//池子对应的线程
+    AutoreleasePoolPage * const parent;//父指针
+    AutoreleasePoolPage *child;//孩子指针
+    uint32_t const depth;//深度？？？
     uint32_t hiwat;
 
     // SIZE-sizeof(*this) bytes of contents follow
@@ -750,11 +752,11 @@ class AutoreleasePoolPage
     }
 
 
-    id * begin() {
-        return (id *) ((uint8_t *)this+sizeof(*this));
+    id * begin() {//第一个对象，即边界对象
+        return (id *) ((uint8_t *)this+sizeof(*this));//sizeof(*this) 结构体成员变量所占用的空间
     }
 
-    id * end() {
+    id * end() {//
         return (id *) ((uint8_t *)this+SIZE);
     }
 
@@ -802,11 +804,11 @@ class AutoreleasePoolPage
             }
 
             page->unprotect();
-            id obj = *--page->next;
-            memset((void*)page->next, SCRIBBLE, sizeof(*page->next));
+            id obj = *--page->next;//获取当前的对象
+            memset((void*)page->next, SCRIBBLE, sizeof(*page->next));//内存标记特殊数据
             page->protect();
 
-            if (obj != POOL_BOUNDARY) {
+            if (obj != POOL_BOUNDARY) {//不是边界对象，调用release方法
                 objc_release(obj);
             }
         }
@@ -899,8 +901,8 @@ class AutoreleasePoolPage
     static inline AutoreleasePoolPage *hotPage() 
     {
         AutoreleasePoolPage *result = (AutoreleasePoolPage *)
-            tls_get_direct(key);
-        if ((id *)result == EMPTY_POOL_PLACEHOLDER) return nil;
+            tls_get_direct(key);//获取当前线程的AutoreleasePoolPage
+        if ((id *)result == EMPTY_POOL_PLACEHOLDER) return nil;//里面没有push的对象
         if (result) result->fastcheck();
         return result;
     }
@@ -927,7 +929,7 @@ class AutoreleasePoolPage
     static inline id *autoreleaseFast(id obj)
     {
         AutoreleasePoolPage *page = hotPage();
-        if (page && !page->full()) {
+        if (page && !page->full()) {//存在并且没满
             return page->add(obj);
         } else if (page) {
             return autoreleaseFullPage(obj, page);
@@ -950,12 +952,12 @@ class AutoreleasePoolPage
             else page = new AutoreleasePoolPage(page);
         } while (page->full());
 
-        setHotPage(page);
+        setHotPage(page);//设置当前的page为hotPage
         return page->add(obj);
     }
 
     static __attribute__((noinline))
-    id *autoreleaseNoPage(id obj)
+    id *autoreleaseNoPage(id obj)//AutoReleasePool不存在或者里面没有存过对象，则默认为NoPage
     {
         // "No page" could mean no pool has been pushed
         // or an empty placeholder pool has been pushed and has no contents yet
@@ -1004,10 +1006,10 @@ class AutoreleasePoolPage
 
 
     static __attribute__((noinline))
-    id *autoreleaseNewPage(id obj)
+    id *autoreleaseNewPage(id obj)//新建一个新的page，就是把当前的hotPage当做满的来处理。（Debug调试时候才会有）
     {
-        AutoreleasePoolPage *page = hotPage();
-        if (page) return autoreleaseFullPage(obj, page);
+        AutoreleasePoolPage *page = hotPage();//拿到当前线程正在使用的hotPage,如果为空，说明当前线程没有，那么走autoreleaseNoPage，否则autoreleaseFullPage
+        if (page) return autoreleaseFullPage(obj, page);//
         else return autoreleaseNoPage(obj);
     }
 
@@ -1029,7 +1031,7 @@ public:
             // Each autorelease pool starts on a new pool page.
             dest = autoreleaseNewPage(POOL_BOUNDARY);
         } else {
-            dest = autoreleaseFast(POOL_BOUNDARY);
+            dest = autoreleaseFast(POOL_BOUNDARY);//创建Page时添加的第一个对象 是 边界对象
         }
         assert(dest == EMPTY_POOL_PLACEHOLDER || *dest == POOL_BOUNDARY);
         return dest;
@@ -1078,9 +1080,9 @@ public:
             return;
         }
 
-        page = pageForPointer(token);
+        page = pageForPointer(token); // 根据指针 token 获取token所在的 page
         stop = (id *)token;
-        if (*stop != POOL_BOUNDARY) {
+        if (*stop != POOL_BOUNDARY) {// 如果stop 不是边界对象，进行其他处理
             if (stop == page->begin()  &&  !page->parent) {
                 // Start of coldest page may correctly not be POOL_BOUNDARY:
                 // 1. top-level pool is popped, leaving the cold page in place
@@ -1093,7 +1095,9 @@ public:
         }
 
         if (PrintPoolHiwat) printHiwat();
-
+        // 释放栈中的所有对象，直至stop，
+        // 此时，stop是边界对象，即 创建 autoreleasepool 时
+        // 添加的第一个对象
         page->releaseUntil(stop);
 
         // memory: delete empty children
@@ -1110,6 +1114,8 @@ public:
         } 
         else if (page->child) {
             // hysteresis: keep one empty child if page is more than half full
+            // 不足一半满， 删除所有的子 page，
+            // 否则 删除所有的孙 page
             if (page->lessThanHalfFull()) {
                 page->child->kill();
             }
@@ -1838,15 +1844,23 @@ _objc_rootHash(id obj)
 {
     return (uintptr_t)obj;
 }
+//@autoreleasepool{}会被转换成结构体，结构体的构造函数中，调用objc_autoreleasePoolPush
+//析构函数中调用objc_autoreleasePoolPop
+
+//struct __AtAutoreleasePool {
+//    __AtAutoreleasePool() {atautoreleasepoolobj = objc_autoreleasePoolPush();}
+//    ~__AtAutoreleasePool() {objc_autoreleasePoolPop(atautoreleasepoolobj);}
+//    void * atautoreleasepoolobj;
+//};
 
 void *
-objc_autoreleasePoolPush(void)
+objc_autoreleasePoolPush(void)//是在@autoreleasepool{}中被调用
 {
     return AutoreleasePoolPage::push();
 }
 
 void
-objc_autoreleasePoolPop(void *ctxt)
+objc_autoreleasePoolPop(void *ctxt)//是在@autoreleasepool{}中被调用
 {
     AutoreleasePoolPage::pop(ctxt);
 }
