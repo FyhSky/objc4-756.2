@@ -93,7 +93,7 @@ void add_class_to_loadable_list(Class cls)
 * to its class. Schedule this category for +load after its parent class
 * becomes connected and has its own +load method called.
 **********************************************************************/
-void add_category_to_loadable_list(Category cat)//处理 category load
+void add_category_to_loadable_list(Category cat)
 {
     IMP method;
 
@@ -334,7 +334,7 @@ static bool call_category_loads(void)
 * Locking: loadMethodLock must be held by the caller 
 *   All other locks must not be held.
 **********************************************************************/
-void call_load_methods(void)//调用所有的 load 方法
+void call_load_methods(void)
 {
     static bool loading = NO;
     bool more_categories;
@@ -350,10 +350,9 @@ void call_load_methods(void)//调用所有的 load 方法
     do {
         // 1. Repeatedly call class +loads until there aren't any more
         while (loadable_classes_used > 0) {
-            //循环调用 class 的 load 方法，直到完成所有调用为止
             call_class_loads();
         }
-        // 调用分类的 load 方法
+
         // 2. Call category +loads ONCE
         more_categories = call_category_loads();
 

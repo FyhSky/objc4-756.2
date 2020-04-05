@@ -33,7 +33,6 @@ static const objc_selopt_t *builtins = NULL;
 
 static size_t SelrefCount = 0;
 
-//全局selector表
 static NXMapTable *namedSelectors;
 
 static SEL search_builtins(const char *key);

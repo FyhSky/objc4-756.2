@@ -293,7 +293,6 @@ void environ_init(void)
     // Scan environ[] directly instead of calling getenv() a lot.
     // This optimizes the case where none are set.
     for (char **p = *_NSGetEnviron(); *p != nil; p++) {
-       // printf("%s\n",*p);
         if (0 == strncmp(*p, "Malloc", 6)  ||  0 == strncmp(*p, "DYLD", 4)  ||  
             0 == strncmp(*p, "NSZombiesEnabled", 16))
         {
@@ -344,50 +343,6 @@ void environ_init(void)
         }
     }
 
-    //方便debug，放开所有的配置
-    /*
-    PrintHelp =  true;
-    PrintOptions = true;
-    PrintIvars = true;
-    PrintOptions = true;
-    DebugPoolAllocation = false;
-    PrintImages = true;
-    PrintImageTimes = true;
-    PrintLoading = true;
-    PrintInitializing = true;
-    PrintResolving = true;
-    PrintConnecting = true;
-    PrintProtocols = true;
-    PrintVtables = true;
-    PrintVtableImages = true;
-    PrintCaches = true;
-    PrintFuture = true;
-    PrintPreopt = true;
-    PrintCxxCtors = true;
-    PrintExceptions = true;
-    PrintExceptionThrow = true;
-    PrintAltHandlers = true;
-    PrintReplacedMethods = true;
-    PrintDeprecation = true;
-    PrintPoolHiwat = true;
-    PrintCustomRR = true;
-    PrintCustomAWZ = true;
-    PrintRawIsa = true;
-    DebugUnload = true;
-    DebugFragileSuperclasses = true;
-    DebugNilSync = true;
-    DebugNonFragileIvars = true;
-    DebugAltHandlers = true;
-    DebugMissingPools = false;
-    DebugDuplicateClasses = true;
-    DebugDontCrash = true;
-    DisableVtables = false;
-    DisablePreopt = false;
-    DisableTaggedPointers = false;
-    DisableTaggedPointerObfuscation = false;
-    DisableNonpointerIsa = false;
-    DisableInitializeForkSafety = false; */
- 
     // Print OBJC_HELP and OBJC_PRINT_OPTIONS output.
     if (PrintHelp  ||  PrintOptions) {
         if (PrintHelp) {
@@ -489,7 +444,7 @@ void _objc_pthread_destroyspecific(void *arg)
     }
 }
 
-//tls，全程为 Thread Local Storage，是在当前线程存储一些数据用的
+
 void tls_init(void)
 {
 #if SUPPORT_DIRECT_THREAD_KEYS

@@ -217,7 +217,7 @@ bool bad_magic(const headerType *mhdr)
             mhdr->magic != MH_CIGAM  &&  mhdr->magic != MH_CIGAM_64);
 }
 
-//解析二进制数据为ImageInfo
+
 static header_info * addHeader(const headerType *mhdr, const char *path, int &totalClasses, int &unoptimizedTotalClasses)
 {
     header_info *hi;
@@ -438,7 +438,7 @@ static bool shouldRejectGCImage(const headerType *mhdr)
 
 void 
 map_images_nolock(unsigned mhCount, const char * const mhPaths[],
-                  const struct mach_header * const mhdrs[])//准备镜像具体实现，实现共享内存优化，默认方法注册、自动释放池和散列表初始化及类的加载等等操作
+                  const struct mach_header * const mhdrs[])
 {
     static bool firstTime = YES;
     header_info *hList[mhCount];
@@ -449,7 +449,7 @@ map_images_nolock(unsigned mhCount, const char * const mhPaths[],
     // This function is called before ordinary library initializers. 
     // fixme defer initialization until an objc-using image is found?
     if (firstTime) {
-        preopt_init();//预优化初始化
+        preopt_init();
     }
 
     if (PrintImages) {
@@ -460,7 +460,6 @@ map_images_nolock(unsigned mhCount, const char * const mhPaths[],
     // Find all images with Objective-C metadata.
     hCount = 0;
 
-    //遍历所有的image放在一个链表当中（FirstHeader为头、LastHeader为尾），同时放在一个数组当中hList
     // Count classes. Size various table based on the total.
     int totalClasses = 0;
     int unoptimizedTotalClasses = 0;
@@ -468,14 +467,14 @@ map_images_nolock(unsigned mhCount, const char * const mhPaths[],
         uint32_t i = mhCount;
         while (i--) {
             const headerType *mhdr = (const headerType *)mhdrs[i];
-            //解析二进制数据为ImageInfo
+
             auto hi = addHeader(mhdr, mhPaths[i], totalClasses, unoptimizedTotalClasses);
             if (!hi) {
                 // no objc data in this entry
                 continue;
             }
             
-            if (mhdr->filetype == MH_EXECUTE) {//如果是可执行文件
+            if (mhdr->filetype == MH_EXECUTE) {
                 // Size some data structures based on main executable's size
 #if __OBJC2__
                 size_t count;
@@ -519,9 +518,7 @@ map_images_nolock(unsigned mhCount, const char * const mhPaths[],
     // executable does not contain Objective-C code but Objective-C 
     // is dynamically loaded later.
     if (firstTime) {
-       //初始化selector,注册selector
         sel_init(selrefCount);
-        // 自动释放池和散列表初始化
         arr_init();
 
 #if SUPPORT_GC_COMPAT
@@ -576,8 +573,7 @@ map_images_nolock(unsigned mhCount, const char * const mhPaths[],
 
     }
 
-    if (hCount > 0) {//正式解析对象之前，已经做好初始化的工作（各种SEL的注册、自动释放池TLS初始化、引用计数散列初始化）
-         //读取镜像
+    if (hCount > 0) {
         _read_images(hList, hCount, totalClasses, unoptimizedTotalClasses);
     }
 
@@ -875,7 +871,7 @@ void _objc_atfork_child()
 * Bootstrap initialization. Registers our image notifier with dyld.
 * Called by libSystem BEFORE library initialization time
 **********************************************************************/
-//入口函数
+
 void _objc_init(void)
 {
     static bool initialized = false;
@@ -883,13 +879,13 @@ void _objc_init(void)
     initialized = true;
     
     // fixme defer initialization until an objc-using image is found?
-    environ_init();//先读入环境配置（xcode的各种设置项）具体可以看 objc-env.h 文件
-    tls_init();//初始化线程的析构函数 具体可以看 objc-runtime.mm 文件
-    static_init();//静态构造函数 具体可以看 objc-os.mm 文件
-    lock_init();//初始化锁，具体可以看 objc-runtime-new.mm 文件
-    exception_init();//初始化 exception handle，具体可以看 objc-exception.mm 文件。
-    //注册images回调
-    _dyld_objc_notify_register(&map_images, load_images, unmap_image);//准备镜像、加载镜像、卸载镜像的回调，每当有新的镜像被加载的时候，都会调用这些回调
+    environ_init();
+    tls_init();
+    static_init();
+    lock_init();
+    exception_init();
+
+    _dyld_objc_notify_register(&map_images, load_images, unmap_image);
 }
 
 
